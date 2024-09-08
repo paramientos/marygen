@@ -33,9 +33,9 @@ class MaryGenCommand extends Command
         $modelName = $this->argument('model');
         $modelNamespace = config('marygen.model_namespace');
 
-        $modelClass = "{$modelNamespace}\\{$modelName}";
+        $modelFqdn = "{$modelNamespace}\\{$modelName}";
 
-        if (!class_exists($modelClass)) {
+        if (!class_exists($modelFqdn)) {
             $this->error("Model {$modelName} does not exist!");
             return Command::FAILURE;
         }
@@ -48,12 +48,17 @@ class MaryGenCommand extends Command
             return Command::FAILURE;
         }
 
-        $table = (new $modelClass)->getTable();
+        /** @var Model $modelInstance */
+        $modelInstance = new $modelFqdn;
+
+        $table = $modelInstance->getTable();
         $columns = Schema::getColumns($table);
 
-        $formFields = $this->generateFormFields($table, $columns);
+        $modelKey = $modelInstance->getKeyName();
 
-        $tableColumns = $this->generateTableColumns($columns);
+        $formFields = $this->generateFormFields($table, $columns, $modelKey);
+
+        $tableColumns = $this->generateTableColumns($columns, $modelKey);
         $fieldTypes = $this->getTableFieldTypes($columns);
         $accessModifiers = $this->createAccessModifiers($fieldTypes);
 
@@ -95,20 +100,25 @@ class MaryGenCommand extends Command
         return isset($composerData['require'][$packageName]) || isset($composerData['require-dev'][$packageName]);
     }
 
-    private function generateFormFields(string $table, array $columns): string
+    private function generateFormFields(string $table, array $columns, string $modelKey): string
     {
         $fields = '';
         $prefix = config('mary.prefix');
 
         foreach ($columns as $column) {
+            if ($column['name'] === $modelKey) {
+                continue;
+            }
+
             $colName = $column['name'];
+            $required = !$column['nullable'] ? 'required' : '';
 
             $type = Schema::getColumnType($table, $colName);
             $component = $this->getMaryUIComponent($type);
             $typeProp = $colName === 'password' ? 'type="password"' : '';
             $icon = $this->getIconForColumn($colName);
 
-            $fields .= "<x-{$prefix}{$component} name=\"{$colName}\" {$typeProp} wire:model=\"{$colName}\" {$icon} label=\"" . Str::title($colName) . "\" />\n";
+            $fields .= "<x-{$prefix}{$component} name=\"{$colName}\" {$typeProp} wire:model=\"{$colName}\" {$icon} $required label=\"" . Str::title($colName) . "\" />\n";
         }
 
         return $fields;
@@ -193,12 +203,19 @@ class MaryGenCommand extends Command
         })->implode('');
     }
 
-    private function generateTableColumns($columns): string
+    private function generateTableColumns(array $columns, string $modelKey): string
     {
-        $tableColumns = array_map(function ($column) {
+        $tableColumns = [];
+
+        foreach ($columns as $column) {
+            if ($column['name'] === $modelKey) {
+                continue;
+            }
+
             $label = Str::title(str_replace('_', ' ', $column['name']));
-            return "['key' => '{$column['name']}', 'label' => '{$label}', 'sortable' => true],\n";
-        }, $columns);
+
+            $tableColumns[] = "['key' => '{$column['name']}', 'label' => '{$label}', 'sortable' => true],\n";
+        }
 
         $tableColumns[] = "['key' => 'actions', 'label' => 'Actions', 'sortable' => false],";
 
@@ -260,33 +277,6 @@ new class extends Component
     public {$modelName}|Model|null \$editingModel = null;
     
     {$accessModifiers}
-    
-    public function getModelFields()
-    {
-        \$table = (new Admin())->getTable();
-        \$columns = Schema::getColumns(\$table);
-
-        return collect(\$columns)->mapWithKeys(function (\$column) {
-            return [\$column['name'] => [
-                'type' => \$this->getMaryUIComponentType(\$column['type_name']),
-                'label' => ucfirst(str_replace('_', ' ', \$column['name'])),
-                'required' => !\$column['nullable'],
-            ]];
-        })->all();
-    }
-
-    public function getMaryUIComponentType(string \$type): string
-    {
-        \$componentMap = [
-            'text' => 'textarea',
-            'integer' => 'number',
-            'bigint' => 'number',
-            'boolean' => 'checkbox',
-            'date' => 'datepicker',
-            'datetime' => 'datetimepicker',
-        ];
-        return \$componentMap[\$type] ?? 'input';
-    }
 
     public function openEditModal(string \$modelId): void
     {
@@ -297,7 +287,7 @@ new class extends Component
 
     public function openCreateModal(): void
     {
-        \$this->reset(array_keys(\$this->getModelFields()));
+        \$this->reset();
         \$this->isCreateModalOpen = true;
     }
 
@@ -350,7 +340,6 @@ new class extends Component
         return [
             'headers' => \$this->headers(),
             '{$pluralModelVariable}' => \$this->{$pluralModelVariable}(),
-            'modelFields' => \$this->getModelFields(),
         ];
     }
 }
