@@ -1,6 +1,6 @@
 {
   "name": "soysaltan/marygen",
-  "description": "Generate MaryUI components with one line command",
+  "description": "Generate MaryUI based pages with one line command",
   "type": "library",
   "license": "MIT",
   "homepage": "https://marygen.expozy.co",
