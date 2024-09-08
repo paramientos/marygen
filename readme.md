@@ -80,6 +80,23 @@ MaryGen generates the following components:
     - A modal for editing records
     - A form for creating/editing records
 
+## Configuration
+You can publish the configuration file using:
+
+```php 
+php artisan vendor:publish --tag="marygen-config"
+```
+
+Then, you can modify the config/marygen.php file to customize the model namespace:
+```php
+return [
+   'model_namespace' => 'App\Models',
+];
+```
+
+`model_namespace`: Define the namespace for your models. By default, it uses `App\Models`
+
+
 ## Customization
 
 You can customize the generated components by modifying the following methods in the `MaryGenCommand` class:
@@ -93,7 +110,7 @@ You can customize the generated components by modifying the following methods in
 Common issues and their solutions:
 
 1. **MaryUI package not found**: Ensure you've installed the MaryUI package using `composer require robsontenorio/mary`.
-2. **Model not found**: Make sure the specified model exists in your `App\Models` namespace.
+2. **Model not found**: Make sure the specified model exists in your model namespace.
 3. **View file already exists**: If you receive this error, choose a different name for your view or manually delete the existing file if you want to overwrite it.
 
 ## Contributing
