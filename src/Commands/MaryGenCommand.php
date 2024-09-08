@@ -251,7 +251,7 @@ class MaryGenCommand extends Command
 
         $whereLikes = "['" . implode("','", $dbTableCols) . "']";
 
-        $useMgDirective = config()->boolean('marygen.use_mg_like_eloquent_directive');
+        $useMgDirective = (bool)config('marygen.use_mg_like_eloquent_directive');
 
         $mgSearchQuery = '';
 
