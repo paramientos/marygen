@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\ServiceProvider;
 use SoysalTan\MaryGen\Commands\MaryGenCommand;
+use SoysalTan\MaryGen\Facades\MaryGen;
 
 class MaryGenServiceProvider extends ServiceProvider
 {
@@ -46,10 +47,20 @@ class MaryGenServiceProvider extends ServiceProvider
         }
     }
 
+    public function provides()
+    {
+        return ['marygen'];
+    }
+
     public function register()
     {
         $this->mergeConfigFrom(
             __DIR__ . '/../config/marygen.php', 'marygen'
         );
+
+        // Register the service the package provides.
+        $this->app->singleton('marygen', function ($app) {
+            return new MaryGen();
+        });
     }
 }

@@ -9,11 +9,14 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class MaryGenCommand extends Command
 {
     protected $signature = 'marygen:make {model : The name of the model} {viewName? : The name of the view file}';
     protected $description = 'Generate MaryUI components and a Livewire page for a given model';
+
+    private string $ds = DIRECTORY_SEPARATOR;
 
     /**
      * @throws FileNotFoundException
@@ -82,19 +85,20 @@ class MaryGenCommand extends Command
     private function getViewFilePath(string $viewName): string
     {
         $livewireViewDir = config('livewire.view_path');
-        return "{$livewireViewDir}/{$viewName}.blade.php";
+        return "{$livewireViewDir}{$this->ds}{$viewName}.blade.php";
     }
 
     private function checkPackageInComposerJson(string $packageName): bool
     {
-        $composerJson = file_get_contents('composer.json');
+        $composerJson = file_get_contents(base_path('composer.json'));
+
         if ($composerJson === false) {
-            throw new \RuntimeException("Unable to read composer.json file");
+            throw new RuntimeException("Unable to read composer.json file");
         }
 
         $composerData = json_decode($composerJson, true);
         if ($composerData === null) {
-            throw new \RuntimeException("Invalid JSON in composer.json");
+            throw new RuntimeException("Invalid JSON in composer.json");
         }
 
         return isset($composerData['require'][$packageName]) || isset($composerData['require-dev'][$packageName]);
@@ -273,8 +277,10 @@ new class extends Component
     
     public bool \$isEditModalOpen = false;
     public bool \$isCreateModalOpen = false;
+    public bool \$isDeleteModalOpen = false;
 
     public {$modelName}|Model|null \$editingModel = null;
+    public {$modelName}|Model|null \$modelToDelete = null;
     
     {$accessModifiers}
 
@@ -291,11 +297,24 @@ new class extends Component
         \$this->isCreateModalOpen = true;
     }
 
+    public function openDeleteModal({$modelName} \$model): void
+    {
+        \$this->modelToDelete = \$model;
+        \$this->isDeleteModalOpen = true;
+    }
+    
      public function closeModal(): void
     {
         \$this->isEditModalOpen = false;
         \$this->isCreateModalOpen = false;
         \$this->editingModel = null;
+    }
+    
+    public function deleteModel(): void
+    {
+        \$this->modelToDelete->delete();
+        
+        \$this->isDeleteModalOpen = false;
     }
 
    public function saveModel(): void
@@ -366,44 +385,60 @@ new class extends Component
         @scope('cell_actions', \${$modelVariable})
         <div class="flex items-center space-x-2">
             <x-{$prefix}button tooltip="Edit" icon="o-pencil" wire:click="openEditModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
+            <x-{$prefix}button tooltip="Delete" icon="o-trash" wire:click="openDeleteModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
         </div>
         @endscope
     </x-{$prefix}table>
     
-     <x-{$prefix}modal wire:model="isEditModalOpen">
-        <x-{$prefix}card title="Edit {$modelName}">
-            <p class="text-gray-600">
-                Edit the details of the {$modelName}.
-            </p>
-            <div class="mt-4">
-                {$formFields}
-            </div>
-            <x-slot name="actions">
-                <div class="flex justify-end gap-x-4">
-                    <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
-                    <x-{$prefix}button label="Save" wire:click="saveModel" spinner class="btn-primary" icon="o-check-circle"/>
+     @if (\$isEditModalOpen)
+         <x-{$prefix}modal wire:model="isEditModalOpen">
+            <x-{$prefix}card title="Edit {$modelName}">
+                <p class="text-gray-600">
+                    Edit the details of the {$modelName}.
+                </p>
+                <div class="mt-4">
+                    {$formFields}
                 </div>
-            </x-slot>
-        </x-{$prefix}card>
-    </x-{$prefix}modal>
+                <x-slot name="actions">
+                    <div class="flex justify-end gap-x-4">
+                        <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
+                        <x-{$prefix}button label="Save" wire:click="saveModel" spinner class="btn-primary" icon="o-check-circle"/>
+                    </div>
+                </x-slot>
+            </x-{$prefix}card>
+        </x-{$prefix}modal>
+    @endif
 
     
-    <x-{$prefix}modal wire:model="isCreateModalOpen">
-        <x-{$prefix}card title="Create New {$modelName}">
-            <p class="text-gray-600">
-                Enter the details for the new {$modelName}.
-            </p>
-            <div class="mt-4">
-                {$formFields}
-            </div>
-            <x-slot name="actions">
-                <div class="flex justify-end gap-x-4">
-                    <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
-                    <x-{$prefix}button label="Create" wire:click="saveModel" spinner class="btn-primary" icon="o-plus-circle"/>
+    @if (\$isCreateModalOpen)
+        <x-{$prefix}modal wire:model="isCreateModalOpen">
+            <x-{$prefix}card title="Create New {$modelName}">
+                <p class="text-gray-600">
+                    Enter the details for the new {$modelName}.
+                </p>
+                <div class="mt-4">
+                    {$formFields}
                 </div>
-            </x-slot>
-        </x-{$prefix}card>
-    </x-{$prefix}modal>
+                <x-slot name="actions">
+                    <div class="flex justify-end gap-x-4">
+                        <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
+                        <x-{$prefix}button label="Create" wire:click="saveModel" spinner class="btn-primary" icon="o-plus-circle"/>
+                    </div>
+                </x-slot>
+            </x-{$prefix}card>
+        </x-{$prefix}modal>
+    @endif
+    
+    @if (\$isDeleteModalOpen)
+         <x-{$prefix}modal wire:model="isDeleteModalOpen" title="Delete">
+            <div>Are you sure you want to delete this record ?</div>
+    
+            <x-slot:actions>
+                <x-{$prefix}button label="No" @click="\$wire.isDeleteModalOpen = false"/>
+                <x-{$prefix}button label="Yes" wire:click="deleteModel" class="btn-primary"/>
+            </x-slot:actions>
+        </x-{$prefix}modal>
+    @endif
 </div>
 EOT;
     }
