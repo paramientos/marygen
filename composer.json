@@ -1,0 +1,54 @@
+{
+  "name": "soysaltan/marygen",
+  "description": "Generate MaryUI components with one line command",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://marygen.expozy.co",
+  "authors": [
+    {
+      "name": "Soysal Tan",
+      "email": "soysaltan@hotmail.it",
+      "homepage": "https://github.com/paramientos"
+    }
+  ],
+  "keywords": [
+    "laravel",
+    "livewire",
+    "livewire 3",
+    "livewire ui",
+    "livewire ui components",
+    "tallstack",
+    "tallstack ui",
+    "tallstackui",
+    "tallstack components",
+    "blade",
+    "ui",
+    "blade ui components",
+    "livewire-components",
+    "livewire components",
+    "livewire-packages",
+    "livewire packages",
+    "tailwind",
+    "components",
+    "daisyUI",
+    "alpinejs"
+  ],
+  "require": {
+    "illuminate/support": "^10.0|^11.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Soysaltan\\MaryGen\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "SoysalTan\\MaryGen\\MaryGenServiceProvider"
+      ],
+      "aliases": {
+        "MaryGen": "SoysalTan\\MaryGen\\Facades\\MaryGen"
+      }
+    }
+  }
+}
