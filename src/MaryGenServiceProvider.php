@@ -3,7 +3,7 @@
 namespace SoysalTan\MaryGen;
 
 use Illuminate\Support\ServiceProvider;
-use Soysaltan\MaryGen\Commands\MaryGenCommand;
+use SoysalTan\MaryGen\Commands\MaryGenCommand;
 
 class MaryGenServiceProvider extends ServiceProvider
 {

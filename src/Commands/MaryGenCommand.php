@@ -1,6 +1,6 @@
 <?php
 
-namespace Soysaltan\MaryGen\Commands;
+namespace SoysalTan\MaryGen\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
@@ -11,13 +11,18 @@ use Illuminate\Support\Str;
 
 class MaryGenCommand extends Command
 {
-    protected $signature = 'mary-gen:make {model : The name of the model} {viewName? : The name of the view file}';
+    protected $signature = 'marygen:make {model : The name of the model} {viewName? : The name of the view file}';
     protected $description = 'Generate MaryUI components and a Livewire page for a given model';
 
     public function handle()
     {
         if (!$this->checkPackageInComposerJson('robsontenorio/mary')) {
             $this->error('MaryUI package not found! Please install using: `composer req robsontenorio/mary`');
+            return Command::FAILURE;
+        }
+
+        if (!$this->checkPackageInComposerJson('livewire/volt')) {
+            $this->error('Livewire Volt package not found! Please see doc: `https://livewire.laravel.com/docs/volt#installation`');
             return Command::FAILURE;
         }
 
