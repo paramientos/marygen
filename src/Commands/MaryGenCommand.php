@@ -29,7 +29,7 @@ class MaryGenCommand extends Command
         }
 
         if (!$this->checkPackageInComposerJson('livewire/volt')) {
-            $this->error('Livewire Volt package not found! Please see doc: `https://livewire.laravel.com/docs/volt#installation`');
+            $this->error('Livewire Volt package not found! Please run: composer require livewire/livewire livewire/volt && php artisan volt:install or see docs at: `https://livewire.laravel.com/docs/volt#installation`');
             return Command::FAILURE;
         }
 

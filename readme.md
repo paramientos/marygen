@@ -161,6 +161,60 @@ Common issues and their solutions:
    - Error: `File {viewName}.blade.php already exists!`
    - Solution: Choose a different name for your view or manually delete the existing file if you want to overwrite it.
 
+## Troubleshooting
+
+Common issues and their solutions:
+
+1. **MaryUI package not found**:
+   - Error: `MaryUI package not found! Please install using: 'composer req robsontenorio/mary'`
+   - Solution: Run `composer require robsontenorio/mary` to install the MaryUI package.
+
+2. **Livewire Volt package not found**:
+   - Error: `Livewire Volt package not found! Please see doc: 'https://livewire.laravel.com/docs/volt#installation'`
+   - Solution: Install Livewire Volt using `composer require livewire/livewire livewire/volt && php artisan volt:install`.
+
+3. **Model not found**:
+   - Error: `Model {modelName} does not exist!`
+   - Solution: Ensure the specified model exists in your model namespace (default: `App\Models`).
+
+4. **View file already exists**:
+   - Error: `File {viewName}.blade.php already exists!`
+   - Solution: Choose a different name for your view or manually delete the existing file if you want to overwrite it.
+
+## Uninstallation
+
+If you need to remove MaryGen from your project, follow these steps:
+
+1. Remove the package using Composer:
+   ```bash
+   composer remove soysaltan/marygen
+   ```
+
+2. Remove the configuration file (if you published it):
+   ```bash
+   rm config/marygen.php
+   ```
+
+3. Remove any generated files:
+   - Blade views in `resources/views/livewire/`
+
+4. Remove any routes added by MaryGen in your `routes/web.php` file.
+
+5. If you no longer need MaryUI or Livewire Volt, you can remove them as well:
+   ```bash
+   composer remove robsontenorio/mary
+   composer remove livewire/livewire
+   composer remove livewire/volt
+   ```
+
+6. Clear your application cache:
+   ```bash
+   php artisan cache:clear
+   php artisan config:clear
+   ```
+
+Note: Removing MaryGen will not automatically remove the components and pages it generated. You'll need to manually delete these files if you no longer need them.
+
 ## Contributing
 
 Contributions to MaryGen are welcome! Here's how you can contribute:
