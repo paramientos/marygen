@@ -151,7 +151,7 @@ Common issues and their solutions:
 
 2. **Livewire Volt package not found**:
    - Error: `Livewire Volt package not found! Please see doc: 'https://livewire.laravel.com/docs/volt#installation'`
-   - Solution: Install Livewire Volt using `composer require livewire/volt`.
+   - Solution: Install Livewire Volt using `composer require livewire/livewire livewire/volt && php artisan volt:install`.
 
 3. **Model not found**:
    - Error: `Model {modelName} does not exist!`

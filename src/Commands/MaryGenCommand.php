@@ -77,6 +77,7 @@ class MaryGenCommand extends Command
         Artisan::call('view:clear');
 
         $this->info("✅ Done! Livewire page for `{$modelName}` has been generated successfully at `{$viewFilePath}`!");
+        $this->info("✅ Route has been added to the routes/web.php file");
         $this->info("🌐 You can access your generated page via `{$fullUrl}`");
 
         return Command::SUCCESS;
@@ -242,6 +243,10 @@ class MaryGenCommand extends Command
         $modelKey = $modelInstance->getKeyName();
         $hasUuid = $modelInstance->usesUniqueIds();
 
+        $sortingCol = in_array($modelInstance->getCreatedAtColumn(), $dbTableCols)
+            ? $modelInstance->getCreatedAtColumn()
+            : $modelKey;
+
         $singleQuote = $hasUuid ? "'" : '';
 
         $whereLikes = "['" . implode("','", $dbTableCols) . "']";
@@ -271,7 +276,7 @@ new class extends Component
     use \Livewire\WithPagination;
     use \Mary\Traits\Toast;
 
-    public array \$sortBy = ['column' => 'created_at', 'direction' => 'desc'];
+    public array \$sortBy = ['column' => '$sortingCol', 'direction' => 'desc'];
     public int \$perPage = 10;
     public string \$search = '';
     
