@@ -4,6 +4,7 @@ namespace SoysalTan\MaryGen\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Filesystem\FileNotFoundException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
@@ -14,6 +15,9 @@ class MaryGenCommand extends Command
     protected $signature = 'marygen:make {model : The name of the model} {viewName? : The name of the view file}';
     protected $description = 'Generate MaryUI components and a Livewire page for a given model';
 
+    /**
+     * @throws FileNotFoundException
+     */
     public function handle()
     {
         if (!$this->checkPackageInComposerJson('robsontenorio/mary')) {
@@ -45,14 +49,17 @@ class MaryGenCommand extends Command
         }
 
         $table = (new $modelClass)->getTable();
-        $columns = Schema::getColumnListing($table);
+        $columns = Schema::getColumns($table);
 
         $formFields = $this->generateFormFields($table, $columns);
+
         $tableColumns = $this->generateTableColumns($columns);
-        $fieldTypes = $this->getTableFieldTypes($table, $columns);
+        $fieldTypes = $this->getTableFieldTypes($columns);
         $accessModifiers = $this->createAccessModifiers($fieldTypes);
 
-        $livewirePage = $this->generateLivewirePage($modelName, $formFields, $tableColumns, $accessModifiers, $modelNamespace);
+        $cols = collect($columns)->pluck('name')->toArray();
+
+        $livewirePage = $this->generateLivewirePage($cols, $modelName, $formFields, $tableColumns, $accessModifiers, $modelNamespace);
 
         $this->createLivewireFile($livewirePage, $viewFilePath);
 
@@ -94,12 +101,14 @@ class MaryGenCommand extends Command
         $prefix = config('mary.prefix');
 
         foreach ($columns as $column) {
-            $type = Schema::getColumnType($table, $column);
-            $component = $this->getMaryUIComponent($type);
-            $typeProp = $column === 'password' ? 'type="password"' : '';
-            $icon = $this->getIconForColumn($column);
+            $colName = $column['name'];
 
-            $fields .= "<x-{$prefix}{$component} name=\"{$column}\" {$typeProp} wire:model=\"{$column}\" {$icon} label=\"" . Str::title($column) . "\" />\n";
+            $type = Schema::getColumnType($table, $colName);
+            $component = $this->getMaryUIComponent($type);
+            $typeProp = $colName === 'password' ? 'type="password"' : '';
+            $icon = $this->getIconForColumn($colName);
+
+            $fields .= "<x-{$prefix}{$component} name=\"{$colName}\" {$typeProp} wire:model=\"{$colName}\" {$icon} label=\"" . Str::title($colName) . "\" />\n";
         }
 
         return $fields;
@@ -152,28 +161,43 @@ class MaryGenCommand extends Command
         return $typeMap[$type] ?? 'string';
     }
 
-    private function getTableFieldTypes(string $table, array $columns): array
+    private function getTableFieldTypes(array $columns): array
     {
         $fields = [];
+
         foreach ($columns as $column) {
-            $type = Schema::getColumnType($table, $column);
-            $fields[$column] = $this->getPropTypeFromTableField($type);
+            $fields[$column['name']] = [
+                'type' => $this->getPropTypeFromTableField($column['type_name']),
+                'required' => !$column['nullable']
+            ];
         }
         return $fields;
     }
 
     private function createAccessModifiers(array $fields): string
     {
-        return collect($fields)->map(function ($type, $id) {
-            return sprintf('#[Validate(\'sometimes\')]%spublic ?%s $%s = null;%s%s', PHP_EOL, $type, $id, PHP_EOL, PHP_EOL);
+        return collect($fields)->map(function (array $field, string $id) {
+            $validationRule = $field['required'] ? 'required' : 'nullable';
+
+            return sprintf(
+                '#[Validate(\'%s\')]%spublic %s%s $%s%s;%s%s',
+                $validationRule,
+                PHP_EOL,
+                $field['required'] ? '' : '?',
+                $field['type'],
+                $id,
+                $field['required'] ? '' : '= null',
+                PHP_EOL,
+                PHP_EOL
+            );
         })->implode('');
     }
 
     private function generateTableColumns($columns): string
     {
         $tableColumns = array_map(function ($column) {
-            $label = Str::title(str_replace('_', ' ', $column));
-            return "['key' => '{$column}', 'label' => '{$label}', 'sortable' => true],\n";
+            $label = Str::title(str_replace('_', ' ', $column['name']));
+            return "['key' => '{$column['name']}', 'label' => '{$label}', 'sortable' => true],\n";
         }, $columns);
 
         $tableColumns[] = "['key' => 'actions', 'label' => 'Actions', 'sortable' => false],";
@@ -181,12 +205,33 @@ class MaryGenCommand extends Command
         return implode('', $tableColumns);
     }
 
-    private function generateLivewirePage(string $modelName, string $formFields, string $tableColumns, string $accessModifiers = '', string $modelNamespace = 'App\Models'): string
+    private function generateLivewirePage(array $dbTableCols, string $modelName, string $formFields, string $tableColumns, string $accessModifiers = '', string $modelNamespace = 'App\Models'): string
     {
         $modelVariable = Str::camel($modelName);
         $pluralModelVariable = Str::plural($modelVariable);
         $pluralModelTitle = Str::title($pluralModelVariable);
+
+        $modelFqdn = "{$modelNamespace}\\{$modelName}";
+
         $prefix = config('mary.prefix');
+
+        /** @var Model $modelInstance */
+        $modelInstance = new $modelFqdn;
+
+        $modelKey = $modelInstance->getKeyName();
+        $hasUuid = $modelInstance->usesUniqueIds();
+
+        $singleQuote = $hasUuid ? "'" : '';
+
+        $whereLikes = "['" . implode("','", $dbTableCols) . "']";
+
+        $useMgDirective = config()->boolean('marygen.use_mg_like_eloquent_directive');
+
+        $mgSearchQuery = '';
+
+        if ($useMgDirective) {
+            $mgSearchQuery = "->when(\$this->search, fn(Builder \$q) => \$q->mgLike($whereLikes, \$this->search))";
+        }
 
         return <<<EOT
 <?php
@@ -194,9 +239,10 @@ class MaryGenCommand extends Command
 namespace App\Livewire;
 
 use Livewire\Volt\Component;
-use {$modelNamespace}\\{$modelName};
+use $modelFqdn;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Validate;
 
 new class extends Component
@@ -207,20 +253,24 @@ new class extends Component
     public array \$sortBy = ['column' => 'created_at', 'direction' => 'desc'];
     public int \$perPage = 10;
     public string \$search = '';
-    public bool \$isModalOpen = false;
+    
+    public bool \$isEditModalOpen = false;
+    public bool \$isCreateModalOpen = false;
+
     public {$modelName}|Model|null \$editingModel = null;
     
     {$accessModifiers}
     
     public function getModelFields()
     {
-        \$table = (new {$modelName}())->getTable();
-        \$columns = Schema::getColumnListing(\$table);
-        return collect(\$columns)->mapWithKeys(function (\$column) use (\$table) {
-            \$type = Schema::getColumnType(\$table, \$column);
-            return [\$column => [
-                'type' => \$this->getMaryUIComponentType(\$type),
-                'label' => ucfirst(str_replace('_', ' ', \$column)),
+        \$table = (new Admin())->getTable();
+        \$columns = Schema::getColumns(\$table);
+
+        return collect(\$columns)->mapWithKeys(function (\$column) {
+            return [\$column['name'] => [
+                'type' => \$this->getMaryUIComponentType(\$column['type_name']),
+                'label' => ucfirst(str_replace('_', ' ', \$column['name'])),
+                'required' => !\$column['nullable'],
             ]];
         })->all();
     }
@@ -242,21 +292,34 @@ new class extends Component
     {
         \$this->editingModel = {$modelName}::findOrFail(\$modelId);
         \$this->fill(\$this->editingModel->toArray());
-        \$this->isModalOpen = true;
+        \$this->isEditModalOpen = true;
     }
 
-    public function closeModal(): void
+    public function openCreateModal(): void
     {
-        \$this->isModalOpen = false;
+        \$this->reset(array_keys(\$this->getModelFields()));
+        \$this->isCreateModalOpen = true;
+    }
+
+     public function closeModal(): void
+    {
+        \$this->isEditModalOpen = false;
+        \$this->isCreateModalOpen = false;
         \$this->editingModel = null;
     }
 
-    public function saveModel(): void
+   public function saveModel(): void
     {
         \$validated = \$this->validate();
-        \$this->editingModel->update(\$validated);
+        
+        if (\$this->editingModel) {
+            \$this->editingModel->update(\$validated);
+            \$this->success('Record updated successfully.');
+        } else {
+            {$modelName}::create(\$validated);
+            \$this->success('Record created successfully.');
+        }
         \$this->closeModal();
-        \$this->success('Record updated successfully.');
     }
 
     public function headers(): array
@@ -277,6 +340,7 @@ new class extends Component
     public function {$pluralModelVariable}(): \Illuminate\Pagination\LengthAwarePaginator
     {
         return {$modelName}::query()
+             $mgSearchQuery
             ->orderBy(\$this->sortBy['column'], \$this->sortBy['direction'])
             ->paginate(15);
     }
@@ -293,18 +357,18 @@ new class extends Component
 ?>
 
 <div class="bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 min-h-screen p-8">
-    <x-header title="{$pluralModelTitle}" subtitle="{$modelName} List" separator progress-indicator class="mb-8">
+    <x-{$prefix}header title="{$pluralModelTitle}" subtitle="{$modelName} List" separator progress-indicator class="mb-8">
         <x-slot:middle class="!justify-end">
-            <x-input icon="o-magnifying-glass" placeholder="Search..." wire:model.live.debounce="search"
+            <x-{$prefix}input icon="o-magnifying-glass" placeholder="Search..." wire:model.live.debounce="search"
                      class="w-64 bg-white/70 backdrop-blur-sm border-violet-200 focus:border-violet-400 focus:ring focus:ring-violet-200 focus:ring-opacity-50 rounded-full"/>
         </x-slot:middle>
         <x-slot:actions>
-            <x-button icon="o-plus" @click="\$wire.create()"
+          <x-{$prefix}button icon="o-plus" wire:click="openCreateModal"
                       class="bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl transition duration-300 rounded-full px-6">
                 Add New {$modelName}
-            </x-button>
+            </x-{$prefix}button>
         </x-slot:actions>
-    </x-header>
+    </x-{$prefix}header>
     
     <x-{$prefix}table :headers="\$headers" :rows="\${$pluralModelVariable}" :sort-by="\$sortBy" with-pagination class="w-full table-auto">
         @php
@@ -312,12 +376,12 @@ new class extends Component
         @endphp
         @scope('cell_actions', \${$modelVariable})
         <div class="flex items-center space-x-2">
-            <x-{$prefix}button tooltip="Edit" icon="o-pencil" wire:click="openEditModal('{{ \${$modelVariable}->id }}')"/>
+            <x-{$prefix}button tooltip="Edit" icon="o-pencil" wire:click="openEditModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
         </div>
         @endscope
     </x-{$prefix}table>
     
-    <x-{$prefix}modal wire:model="isModalOpen">
+     <x-{$prefix}modal wire:model="isEditModalOpen">
         <x-{$prefix}card title="Edit {$modelName}">
             <p class="text-gray-600">
                 Edit the details of the {$modelName}.
@@ -325,12 +389,30 @@ new class extends Component
             <div class="mt-4">
                 {$formFields}
             </div>
-            <x-{$prefix}slot name="actions">
+            <x-slot name="actions">
                 <div class="flex justify-end gap-x-4">
-                    <x-button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
-                    <x-button label="Save" wire:click="saveModel" spinner class="btn-primary" icon="o-check-circle"/>
+                    <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
+                    <x-{$prefix}button label="Save" wire:click="saveModel" spinner class="btn-primary" icon="o-check-circle"/>
                 </div>
-            </x-{$prefix}slot>
+            </x-slot>
+        </x-{$prefix}card>
+    </x-{$prefix}modal>
+
+    
+    <x-{$prefix}modal wire:model="isCreateModalOpen">
+        <x-{$prefix}card title="Create New {$modelName}">
+            <p class="text-gray-600">
+                Enter the details for the new {$modelName}.
+            </p>
+            <div class="mt-4">
+                {$formFields}
+            </div>
+            <x-slot name="actions">
+                <div class="flex justify-end gap-x-4">
+                    <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
+                    <x-{$prefix}button label="Create" wire:click="saveModel" spinner class="btn-primary" icon="o-plus-circle"/>
+                </div>
+            </x-slot>
         </x-{$prefix}card>
     </x-{$prefix}modal>
 </div>
