@@ -22,7 +22,9 @@ class MaryGenCommand extends Command
         }
 
         $modelName = $this->argument('model');
-        $modelClass = "App\\Models\\$modelName";
+        $modelNamespace = config('marygen.model_namespace');
+
+        $modelClass = "{$modelNamespace}\\{$modelName}";
 
         if (!class_exists($modelClass)) {
             $this->error("Model {$modelName} does not exist!");
@@ -45,7 +47,7 @@ class MaryGenCommand extends Command
         $fieldTypes = $this->getTableFieldTypes($table, $columns);
         $accessModifiers = $this->createAccessModifiers($fieldTypes);
 
-        $livewirePage = $this->generateLivewirePage($modelName, $formFields, $tableColumns, $accessModifiers);
+        $livewirePage = $this->generateLivewirePage($modelName, $formFields, $tableColumns, $accessModifiers, $modelNamespace);
 
         $this->createLivewireFile($livewirePage, $viewFilePath);
 
@@ -174,7 +176,7 @@ class MaryGenCommand extends Command
         return implode('', $tableColumns);
     }
 
-    private function generateLivewirePage(string $modelName, string $formFields, string $tableColumns, string $accessModifiers = ''): string
+    private function generateLivewirePage(string $modelName, string $formFields, string $tableColumns, string $accessModifiers = '', string $modelNamespace = 'App\Models'): string
     {
         $modelVariable = Str::camel($modelName);
         $pluralModelVariable = Str::plural($modelVariable);
@@ -187,7 +189,7 @@ class MaryGenCommand extends Command
 namespace App\Livewire;
 
 use Livewire\Volt\Component;
-use App\Models\\$modelName;
+use {$modelNamespace}\\{$modelName};
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\Validate;
