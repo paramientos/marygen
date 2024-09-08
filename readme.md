@@ -50,7 +50,7 @@ MaryGen is a powerful Laravel package designed to streamline the process of gene
    https://mary-ui.com/docs/installation
 
 
-3. Install the Livewire, Livewire Volt packages:
+3. Install the Livewire, Livewire Volt packages (if not already installed with MaryUI):
    ```bash
    composer require livewire/livewire livewire/volt && php artisan volt:install
    ```
