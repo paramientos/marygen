@@ -19,6 +19,11 @@ MaryGen is a powerful Laravel package designed to streamline the process of gene
 To install MaryGen, follow these steps:
 
 1. Ensure you have a Laravel project set up.
+
+   For more detailed information about MaryUI, including its features, installation process, and usage, please visit the official MaryUI documentation:
+   https://mary-ui.com/docs/installation
+
+
 2. Install the MaryUI package:
    ```
    composer require robsontenorio/mary
