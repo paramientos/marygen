@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
+use SoysalTan\MaryGen\Facades\MaryGen;
 
 class MaryGenCommand extends Command
 {
