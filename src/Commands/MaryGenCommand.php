@@ -456,6 +456,8 @@ EOT;
     {
         $webRouteContent = File::get(base_path('routes/web.php'));
         $uri = str($tableName)->kebab();
+
+        $viewName = str_replace('/', '.', $viewName);
         $route = "Volt::route('/{$uri}', '{$viewName}');";
 
         if (!str($webRouteContent)->contains($route)) {
