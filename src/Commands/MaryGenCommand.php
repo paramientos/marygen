@@ -144,11 +144,13 @@ class MaryGenCommand extends Command
             $typeProp = $colName === 'password' ? 'type="password"' : '';
             $icon = $this->getIconForColumn($colName);
 
+            $label = Str::headline($colName);
+
             if (!is_null($this->option('dest_lang'))) {
-                $colName = $tr->translate($colName);
+                $label = $tr->translate($label);
             }
 
-            $fields .= "<x-{$prefix}{$component} {$typeProp} wire:model=\"{$colName}\" {$icon} $required label=\"" . Str::headline($colName) . "\" />\n";
+            $fields .= "<x-{$prefix}{$component} {$typeProp} wire:model=\"{$colName}\" {$icon} $required label=\"" . $label . "\" />\n";
         }
 
         return $fields;
