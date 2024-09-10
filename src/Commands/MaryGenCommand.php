@@ -14,6 +14,7 @@ use Stichoza\GoogleTranslate\Exceptions\LargeTextException;
 use Stichoza\GoogleTranslate\Exceptions\RateLimitException;
 use Stichoza\GoogleTranslate\Exceptions\TranslationRequestException;
 use Stichoza\GoogleTranslate\GoogleTranslate;
+use function Symfony\Component\Translation\t;
 
 class MaryGenCommand extends Command
 {
@@ -52,6 +53,11 @@ class MaryGenCommand extends Command
 
         if (file_exists($viewFilePath)) {
             $this->error("File {$viewName}.blade.php already exists!");
+            return Command::FAILURE;
+        }
+
+        if ($this->option('source_lang') && !$this->option('dest_lang')) {
+            $this->error("Destination language is required if source language presents!");
             return Command::FAILURE;
         }
 

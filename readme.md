@@ -10,10 +10,11 @@
 7. [Command Structure](#command-structure)
 8. [Generated Components](#generated-components)
 9. [Customization](#customization)
-10. [Troubleshooting](#troubleshooting)
-11. [Contributing](#contributing)
-12. [License](#license)
-13. [Support](#support)
+10. [Translation Feature](#translation-feature)
+11. [Troubleshooting](#troubleshooting)
+12. [Contributing](#contributing)
+13. [License](#license)
+14. [Support](#support)
 
 ## Introduction
 
@@ -28,6 +29,7 @@ MaryGen is a powerful Laravel package designed to streamline the process of gene
 - Built-in sorting, pagination, and search capabilities
 - Easy customization options
 - Automatic route generation
+- Translation support for generated content (new in version 0.35.0)
 
 ## Requirements
 
@@ -40,12 +42,7 @@ MaryGen is a powerful Laravel package designed to streamline the process of gene
 
 1. Ensure you have a Laravel project set up.
 
-2. Install the MaryUI package:
-   ```bash
-   composer require robsontenorio/mary
-   ```
-
-   For more detailed information about MaryUI, including its features, installation process, and usage, please visit the official MaryUI documentation:
+2. Install the MaryUI:
 
    https://mary-ui.com/docs/installation
 
@@ -77,7 +74,7 @@ return [
 ```
 
 - `model_namespace`: Define the namespace for your models. Default is `App\Models`.
-- `use_mg_like_eloquent_directive`: Determine whether to use the MgLike Eloquent directive for search functionality. For example: 
+- `use_mg_like_eloquent_directive`: Determine whether to use the MgLike Eloquent directive for search functionality. For example:
 
 ```php
 $q->mgLike(['id', 'username', 'email', 'password', 'name', 'lastname', 'title', 'phone', 'avatar', 'time_zone', 'last_login_at', 'status', 'created_at', 'updated_at'], $this->search))
@@ -88,18 +85,20 @@ $q->mgLike(['id', 'username', 'email', 'password', 'name', 'lastname', 'title', 
 To generate a MaryUI component and Livewire page for a model, use the following command:
 
 ```bash
-php artisan marygen:make {model} {viewName?}
+php artisan marygen:make {--m|model=} {--w|view=} {--d|dest_lang=} {--s|source_lang=}
 ```
 
-- `{model}`: The name of the model for which you want to generate the components.
-- `{viewName?}`: (Optional) The name of the view file. If not provided, it will use the lowercase model name.
+- `--m|model`: The name of the model for which you want to generate the components.
+- `--w|view`: (Optional) The name of the view file. If not provided, it will use the lowercase model name.
+- `--d|dest_lang`: (Required if source_lang presents) The destination language code for translation. 
+- `--s|source_lang`: (Optional) The source language code for translation.If not present, it detects the source language automatically.
 
 Example:
 ```bash
-php artisan marygen:make User admin-users
+php artisan marygen:make --model=User --view=admin-users --dest_lang=es
 ```
 
-This command will generate a Livewire page for the User model with CRUD functionality and name the view file `admin-users.blade.php`.
+This command will generate a Livewire page for the User model with CRUD functionality, name the view file `admin-users.blade.php`, and translate the content from English to Spanish.
 
 ## Command Structure
 
@@ -141,25 +140,23 @@ You can customize the generated components by modifying the following methods in
 
 Additionally, you can edit the generated files directly to further tailor them to your specific needs.
 
-## Troubleshooting
+## Translation Feature
 
-Common issues and their solutions:
+MaryGen includes a translation feature that allows you to generate content in different languages. This feature uses the Google Translate API to translate field names, labels, and other text elements in the generated components.
+It uses `stichoza/google-translate-php` package. (https://github.com/Stichoza/google-translate-php)
+To use the translation feature:
 
-1. **MaryUI package not found**:
-   - Error: `MaryUI package not found! Please install using: 'composer req robsontenorio/mary'`
-   - Solution: Run `composer require robsontenorio/mary` to install the MaryUI package.
+1. Specify the destination language using the `--dest_lang` option when running the `marygen:make` command.
+2. Optionally, specify the source language using the `--source_lang` option. If not provided, Google Translate will attempt to auto-detect the source language.
 
-2. **Livewire Volt package not found**:
-   - Error: `Livewire Volt package not found! Please see doc: 'https://livewire.laravel.com/docs/volt#installation'`
-   - Solution: Install Livewire Volt using `composer require livewire/livewire livewire/volt && php artisan volt:install`.
+Example:
+```bash
+php artisan marygen:make --model=Product --view=product-management --dest_lang=fr --source_lang=en
+```
 
-3. **Model not found**:
-   - Error: `Model {modelName} does not exist!`
-   - Solution: Ensure the specified model exists in your model namespace (default: `App\Models`).
+This command will generate the components for the Product model and translate the content from English to French.
 
-4. **View file already exists**:
-   - Error: `File {viewName}.blade.php already exists!`
-   - Solution: Choose a different name for your view or manually delete the existing file if you want to overwrite it.
+Note: The translation feature requires an active internet connection to communicate with the Google Translate API.
 
 ## Troubleshooting
 
@@ -181,39 +178,9 @@ Common issues and their solutions:
    - Error: `File {viewName}.blade.php already exists!`
    - Solution: Choose a different name for your view or manually delete the existing file if you want to overwrite it.
 
-## Uninstallation
-
-If you need to remove MaryGen from your project, follow these steps:
-
-1. Remove the package using Composer:
-   ```bash
-   composer remove soysaltan/marygen
-   ```
-
-2. Remove the configuration file (if you published it):
-   ```bash
-   rm config/marygen.php
-   ```
-
-3. Remove any generated files:
-   - Blade views in `resources/views/livewire/`
-
-4. Remove any routes added by MaryGen in your `routes/web.php` file.
-
-5. If you no longer need MaryUI or Livewire Volt, you can remove them as well:
-   ```bash
-   composer remove robsontenorio/mary
-   composer remove livewire/livewire
-   composer remove livewire/volt
-   ```
-
-6. Clear your application cache:
-   ```bash
-   php artisan cache:clear
-   php artisan config:clear
-   ```
-
-Note: Removing MaryGen will not automatically remove the components and pages it generated. You'll need to manually delete these files if you no longer need them.
+5. **Translation errors**:
+   - Error: Various Google Translate API errors
+   - Solution: Ensure you have an active internet connection and that the language codes you're using are valid. Check the Google Translate documentation for supported language codes.
 
 ## Contributing
 
