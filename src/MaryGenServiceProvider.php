@@ -49,7 +49,9 @@ class MaryGenServiceProvider extends ServiceProvider
 
     public function provides()
     {
-        return ['marygen'];
+        return [
+            \SoysalTan\MaryGen\MaryGen::class
+        ];
     }
 
     public function register()
