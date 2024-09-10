@@ -124,7 +124,7 @@ class MaryGenCommand extends Command
             $typeProp = $colName === 'password' ? 'type="password"' : '';
             $icon = $this->getIconForColumn($colName);
 
-            $fields .= "<x-{$prefix}{$component} name=\"{$colName}\" {$typeProp} wire:model=\"{$colName}\" {$icon} $required label=\"" . Str::title($colName) . "\" />\n";
+            $fields .= "<x-{$prefix}{$component} {$typeProp} wire:model=\"{$colName}\" {$icon} $required label=\"" . Str::headline($colName) . "\" />\n";
         }
 
         return $fields;
