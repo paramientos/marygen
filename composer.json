@@ -34,7 +34,8 @@
     "alpinejs"
   ],
   "require": {
-    "illuminate/support": "^10.0|^11.0"
+    "illuminate/support": "^10.0|^11.0",
+    "stichoza/google-translate-php": "^5.2"
   },
   "require-dev": {
     "orchestra/testbench": "^6.0|^7.0|^8.0",

@@ -10,11 +10,14 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
-use SoysalTan\MaryGen\Facades\MaryGen;
+use Stichoza\GoogleTranslate\Exceptions\LargeTextException;
+use Stichoza\GoogleTranslate\Exceptions\RateLimitException;
+use Stichoza\GoogleTranslate\Exceptions\TranslationRequestException;
+use Stichoza\GoogleTranslate\GoogleTranslate;
 
 class MaryGenCommand extends Command
 {
-    protected $signature = 'marygen:make {model : The name of the model} {viewName? : The name of the view file}';
+    protected $signature = 'marygen:make {--m|model=} {--w|view=} {--d|dest_lang=} {--s|source_lang=}';
     protected $description = 'Generate MaryUI components and a Livewire page for a given model';
 
     private string $ds = DIRECTORY_SEPARATOR;
@@ -34,7 +37,7 @@ class MaryGenCommand extends Command
             return Command::FAILURE;
         }
 
-        $modelName = $this->argument('model');
+        $modelName = $this->option('model');
         $modelNamespace = config('marygen.model_namespace');
 
         $modelFqdn = "{$modelNamespace}\\{$modelName}";
@@ -44,7 +47,7 @@ class MaryGenCommand extends Command
             return Command::FAILURE;
         }
 
-        $viewName = strtolower($this->argument('viewName') ?? $modelName);
+        $viewName = strtolower($this->option('view') ?? $modelName);
         $viewFilePath = $this->getViewFilePath($viewName);
 
         if (file_exists($viewFilePath)) {
@@ -106,10 +109,21 @@ class MaryGenCommand extends Command
         return isset($composerData['require'][$packageName]) || isset($composerData['require-dev'][$packageName]);
     }
 
+    /**
+     * @throws LargeTextException
+     * @throws RateLimitException
+     * @throws TranslationRequestException
+     */
     private function generateFormFields(string $table, array $columns, string $modelKey): string
     {
         $fields = '';
         $prefix = config('mary.prefix');
+
+        if (!is_null($this->option('dest_lang'))) {
+            $tr = new GoogleTranslate();
+            $tr->setSource($this->option('source_lang') ?? null);
+            $tr->setTarget($this->option('dest_lang'));
+        }
 
         foreach ($columns as $column) {
             if ($column['name'] === $modelKey) {
@@ -123,6 +137,10 @@ class MaryGenCommand extends Command
             $component = $this->getMaryUIComponent($type);
             $typeProp = $colName === 'password' ? 'type="password"' : '';
             $icon = $this->getIconForColumn($colName);
+
+            if (!is_null($this->option('dest_lang'))) {
+                $colName = $tr->translate($colName);
+            }
 
             $fields .= "<x-{$prefix}{$component} {$typeProp} wire:model=\"{$colName}\" {$icon} $required label=\"" . Str::headline($colName) . "\" />\n";
         }
@@ -209,16 +227,32 @@ class MaryGenCommand extends Command
         })->implode('');
     }
 
+    /**
+     * @throws LargeTextException
+     * @throws RateLimitException
+     * @throws TranslationRequestException
+     */
     private function generateTableColumns(array $columns, string $modelKey): string
     {
         $tableColumns = [];
 
+        if (!is_null($this->option('dest_lang'))) {
+            $tr = new GoogleTranslate();
+            $tr->setSource($this->option('source_lang') ?? null);
+            $tr->setTarget($this->option('dest_lang'));
+        }
+
         foreach ($columns as $column) {
+            // Ignore id field
             if ($column['name'] === $modelKey) {
                 continue;
             }
 
-            $label = Str::title(str_replace('_', ' ', $column['name']));
+            $label = Str::headline($column['name']);
+
+            if (!is_null($this->option('dest_lang'))) {
+                $label = $tr->translate($label);
+            }
 
             $tableColumns[] = "['key' => '{$column['name']}', 'label' => '{$label}', 'sortable' => true],\n";
         }
