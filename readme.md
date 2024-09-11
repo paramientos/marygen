@@ -33,8 +33,8 @@ MaryGen is a powerful Laravel package designed to streamline the process of gene
 
 ## Requirements
 
-- Laravel 8.x or higher
-- PHP 7.4 or higher
+- Laravel 10.x or higher
+- PHP 8.0 or higher
 - [MaryUI](https://github.com/robsontenorio/mary) package
 - [Livewire Volt](https://livewire.laravel.com/docs/volt) package
 
@@ -85,50 +85,25 @@ $q->mgLike(['id', 'username', 'email', 'password', 'name', 'lastname', 'title', 
 To generate a MaryUI component and Livewire page for a model, use the following command:
 
 ```bash
-php artisan marygen:make {--m|model=} {--w|view=} {--d|dest_lang=} {--s|source_lang=}
+php artisan marygen:make {--m|model=} {--w|view=} {--d|dest_lang=} {--s|source_lang=} {--nr|no-route}
 ```
 
 - `--m|model`: The name of the model for which you want to generate the components.
 - `--w|view`: (Optional) The name of the view file. If not provided, it will use the lowercase model name.
 - `--d|dest_lang`: (Required if source_lang presents) The destination language code for translation. 
 - `--s|source_lang`: (Optional) The source language code for translation.If not present, it detects the source language automatically.
+- `--nr|no-route`: (Optional) Prevent automatic route addition to routes/web.php.
+
 
 Example:
 ```bash
-php artisan marygen:make --model=User --view=admin-users --dest_lang=es
+php artisan marygen:make --model=User --view=admin-users --dest_lang=es --no-route
 ```
 
-This command will generate a Livewire page for the User model with CRUD functionality, name the view file `admin-users.blade.php`, and translate the content from English to Spanish.
+This command will generate a Livewire page for the User model with CRUD functionality, name the view file `admin-users.blade.php`, and translate the content from English to Spanish and skip the automatic route generation.
 
-## Command Structure
-
-The `MaryGenCommand` class is the core of MaryGen. Here's an overview of its main methods:
-
-- `handle()`: Orchestrates the entire generation process.
-- `checkPackageInComposerJson()`: Verifies the presence of required packages.
-- `generateFormFields()`: Creates form fields based on the model's table structure.
-- `getIconForColumn()`: Assigns appropriate icons to form fields.
-- `getMaryUIComponent()`: Maps database column types to MaryUI components.
-- `generateTableColumns()`: Builds table columns for displaying model data.
-- `generateLivewirePage()`: Produces the Livewire component with CRUD functionality.
-- `updateRoute()`: Adds a route for the newly created page.
-
-## Generated Components
-
-MaryGen generates the following components:
-
-1. A Livewire component class (`app/Livewire/{ModelName}.php`) with:
-   - CRUD operations (create, read, update, delete)
-   - Sorting functionality
-   - Pagination
-   - Search capability
-   - Data validation
-
-2. A Blade view (`resources/views/livewire/{model-name}.blade.php`) with:
-   - A responsive table displaying the model data
-   - Modals for creating and editing records
-   - A search input field
-   - Pagination controls
+## Automatic Route Generation
+By default, MaryGen adds a route for the newly created page to your routes/web.php file. If you prefer to manage routes manually, you can use the --no-route option to skip this step s
 
 ## Customization
 
@@ -181,6 +156,10 @@ Common issues and their solutions:
 5. **Translation errors**:
    - Error: Various Google Translate API errors
    - Solution: Ensure you have an active internet connection and that the language codes you're using are valid. Check the Google Translate documentation for supported language codes.
+
+6. **Route generation issues**:
+   - Problem: Unwanted routes being added to routes/web.php
+   - Solution: Use the --no-route option when running the marygen:make command to prevent automatic route generation.
 
 ## Contributing
 
