@@ -14,11 +14,11 @@ use Stichoza\GoogleTranslate\Exceptions\LargeTextException;
 use Stichoza\GoogleTranslate\Exceptions\RateLimitException;
 use Stichoza\GoogleTranslate\Exceptions\TranslationRequestException;
 use Stichoza\GoogleTranslate\GoogleTranslate;
-use function Symfony\Component\Translation\t;
+use Symfony\Component\Console\Input\InputOption;
 
 class MaryGenCommand extends Command
 {
-    protected $signature = 'marygen:make {--m|model=} {--w|view=} {--d|dest_lang=} {--s|source_lang=}';
+    protected $name = 'marygen:make';
     protected $description = 'Generate MaryUI components and a Livewire page for a given model';
 
     private string $ds = DIRECTORY_SEPARATOR;
@@ -73,7 +73,7 @@ class MaryGenCommand extends Command
 
         $tableColumns = $this->generateTableColumns($columns, $modelKey);
         $fieldTypes = $this->getTableFieldTypes($columns);
-        $accessModifiers = $this->createAccessModifiers($fieldTypes);
+        $accessModifiers = $this->createAccessModifiers($fieldTypes, $modelKey);
 
         $cols = collect($columns)->pluck('name')->toArray();
 
@@ -81,16 +81,32 @@ class MaryGenCommand extends Command
 
         $this->createLivewireFile($livewirePage, $viewFilePath);
 
-        $route = $this->updateRoute($table, $viewName);
-        $fullUrl = config('app.url') . '/' . $route;
+        if ($this->option('no-route')) {
+            $route = $this->updateRoute($table, $viewName);
+            $fullUrl = config('app.url') . '/' . $route;
+        }
 
         Artisan::call('view:clear');
 
         $this->info("✅ Done! Livewire page for `{$modelName}` has been generated successfully at `{$viewFilePath}`!");
-        $this->info("✅ Route has been added to the routes/web.php file");
-        $this->info("🌐 You can access your generated page via `{$fullUrl}`");
+
+        if ($this->option('no-route')) {
+            $this->info("✅ Route has been added to the routes/web.php file");
+            $this->info("🌐 You can access your generated page via `{$fullUrl}`");
+        }
 
         return Command::SUCCESS;
+    }
+
+    protected function getOptions()
+    {
+        return [
+            ['--model', 'm', InputOption::VALUE_REQUIRED, 'The name of the model to generate components for'],
+            ['--view', 'w', InputOption::VALUE_OPTIONAL, 'The name of the view file (defaults to lowercase model name)'],
+            ['--dest_lang', 'd', InputOption::VALUE_OPTIONAL, 'The destination language for translation'],
+            ['--source_lang', 's', InputOption::VALUE_OPTIONAL, 'The source language for translation'],
+            ['--no-route', 'nr', InputOption::VALUE_OPTIONAL, 'Prevent automatic route addition'],
+        ];
     }
 
     private function getViewFilePath(string $viewName): string
@@ -125,7 +141,7 @@ class MaryGenCommand extends Command
         $fields = '';
         $prefix = config('mary.prefix');
 
-        if (!is_null($this->option('dest_lang'))) {
+        if ($this->option('dest_lang')) {
             $tr = new GoogleTranslate();
             $tr->setSource($this->option('source_lang') ?? null);
             $tr->setTarget($this->option('dest_lang'));
@@ -146,7 +162,7 @@ class MaryGenCommand extends Command
 
             $label = Str::headline($colName);
 
-            if (!is_null($this->option('dest_lang'))) {
+            if ($this->option('dest_lang')) {
                 $label = $tr->translate($label);
             }
 
@@ -216,9 +232,9 @@ class MaryGenCommand extends Command
         return $fields;
     }
 
-    private function createAccessModifiers(array $fields): string
+    private function createAccessModifiers(array $fields, string $modelKey): string
     {
-        return collect($fields)->map(function (array $field, string $id) {
+        return collect($fields)->except([$modelKey])->map(function (array $field, string $id) {
             $validationRule = $field['required'] ? 'required' : 'nullable';
 
             return sprintf(
@@ -244,7 +260,7 @@ class MaryGenCommand extends Command
     {
         $tableColumns = [];
 
-        if (!is_null($this->option('dest_lang'))) {
+        if ($this->option('dest_lang')) {
             $tr = new GoogleTranslate();
             $tr->setSource($this->option('source_lang') ?? null);
             $tr->setTarget($this->option('dest_lang'));
@@ -258,7 +274,7 @@ class MaryGenCommand extends Command
 
             $label = Str::headline($column['name']);
 
-            if (!is_null($this->option('dest_lang'))) {
+            if ($this->option('dest_lang')) {
                 $label = $tr->translate($label);
             }
 
@@ -302,6 +318,62 @@ class MaryGenCommand extends Command
             $mgSearchQuery = "->when(\$this->search, fn(Builder \$q) => \$q->mgLike($whereLikes, \$this->search))";
         }
 
+        $lowerModelName = mb_strtolower($modelName, 'UTF-8');
+
+        $_ = [
+            'listTitle' => $pluralModelTitle,
+            'listSubTitle' => "{$modelName} List",
+
+            'addNew' => "Add New {$modelName}",
+            'createModalTitle' => "Create New {$modelName}",
+            'createModalDescription' => "Enter the details for the new {$lowerModelName}.",
+
+            'updateModalTitle' => "Update {$lowerModelName}",
+            'updateModalDescription' => "Edit the details of the {$lowerModelName}.",
+
+            'deleteModalTitle' => "Delete {$lowerModelName}",
+            'deleteModalDescription' => 'Are you sure you want to delete this record ?',
+
+            'save' => 'Save',
+            'update' => 'Update',
+            'delete' => 'Delete',
+            'create' => 'Create',
+            'edit' => 'Edit',
+            'search' => 'Search',
+            'cancel' => 'Cancel',
+            'yes' => 'Yes',
+            'no' => 'No',
+        ];
+
+        if ($this->option('dest_lang')) {
+            $tr = new GoogleTranslate();
+            $tr->setSource($this->option('source_lang') ?? null);
+            $tr->setTarget($this->option('dest_lang'));
+
+            $_['listTitle'] = $tr->translate($_['listTitle']);
+            $_['listSubTitle'] = $tr->translate($_['listSubTitle']);
+
+            $_['addNew'] = $tr->translate($_['addNew']);
+            $_['createModalTitle'] = $tr->translate($_['createModalTitle']);
+            $_['createModalDescription'] = $tr->translate($_['createModalDescription']);
+
+            $_['updateModalTitle'] = $tr->translate($_['updateModalTitle']);
+            $_['updateModalDescription'] = $tr->translate($_['updateModalDescription']);
+
+            $_['deleteModalTitle'] = $tr->translate($_['deleteModalTitle']);
+            $_['deleteModalDescription'] = $tr->translate($_['deleteModalDescription']);
+
+            $_['save'] = $tr->translate($_['save']);
+            $_['update'] = $tr->translate($_['update']);
+            $_['delete'] = $tr->translate($_['delete']);
+            $_['create'] = $tr->translate($_['create']);
+            $_['cancel'] = $tr->translate($_['cancel']);
+            $_['yes'] = $tr->translate($_['yes']);
+            $_['no'] = $tr->translate($_['no']);
+            $_['search'] = $tr->translate($_['search']);
+            $_['edit'] = $tr->translate($_['edit']);
+        }
+
         return <<<EOT
 <?php
 
@@ -322,14 +394,14 @@ new class extends Component
     public array \$sortBy = ['column' => '$sortingCol', 'direction' => 'desc'];
     public int \$perPage = 10;
     public string \$search = '';
-    
+
     public bool \$isEditModalOpen = false;
     public bool \$isCreateModalOpen = false;
     public bool \$isDeleteModalOpen = false;
 
     public {$modelName}|Model|null \$editingModel = null;
     public {$modelName}|Model|null \$modelToDelete = null;
-    
+
     {$accessModifiers}
 
     public function openEditModal(string \$modelId): void
@@ -350,25 +422,25 @@ new class extends Component
         \$this->modelToDelete = \$model;
         \$this->isDeleteModalOpen = true;
     }
-    
+
      public function closeModal(): void
     {
         \$this->isEditModalOpen = false;
         \$this->isCreateModalOpen = false;
         \$this->editingModel = null;
     }
-    
+
     public function deleteModel(): void
     {
         \$this->modelToDelete->delete();
-        
+
         \$this->isDeleteModalOpen = false;
     }
 
    public function saveModel(): void
     {
         \$validated = \$this->validate();
-        
+
         if (\$this->editingModel) {
             \$this->editingModel->update(\$validated);
             \$this->success('Record updated successfully.');
@@ -412,78 +484,78 @@ new class extends Component
 }
 ?>
 
-<div class="bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 min-h-screen p-8">
-    <x-{$prefix}header title="{$pluralModelTitle}" subtitle="{$modelName} List" separator progress-indicator class="mb-8">
+<div>
+    <x-{$prefix}header title="{$_['listTitle']}" subtitle="{$_['listSubTitle']}" separator progress-indicator class="mb-8">
         <x-slot:middle class="!justify-end">
-            <x-{$prefix}input icon="o-magnifying-glass" placeholder="Search..." wire:model.live.debounce="search"
-                     class="w-64 bg-white/70 backdrop-blur-sm border-violet-200 focus:border-violet-400 focus:ring focus:ring-violet-200 focus:ring-opacity-50 rounded-full"/>
+            <x-{$prefix}input icon="o-magnifying-glass" placeholder="{$_['search']}..." wire:model.live.debounce="search"
+                     class="w-64 bg-white/70 backdrop-blur-sm border-violet-200 focus:border-violet-400 focus:ring focus:ring-violet-200 focus:ring-opacity-50"/>
         </x-slot:middle>
         <x-slot:actions>
           <x-{$prefix}button icon="o-plus" wire:click="openCreateModal"
-                      class="bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl transition duration-300 rounded-full px-6">
-                Add New {$modelName}
+                      class="btn-primary">
+                {$_['addNew']}
             </x-{$prefix}button>
         </x-slot:actions>
     </x-{$prefix}header>
-    
+
     <x-{$prefix}table :headers="\$headers" :rows="\${$pluralModelVariable}" :sort-by="\$sortBy" with-pagination class="w-full table-auto">
         @php
             /** @var $modelName \${$modelVariable} */
         @endphp
         @scope('cell_actions', \${$modelVariable})
         <div class="flex items-center space-x-2">
-            <x-{$prefix}button tooltip="Edit" icon="o-pencil" wire:click="openEditModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
-            <x-{$prefix}button tooltip="Delete" icon="o-trash" wire:click="openDeleteModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
+            <x-{$prefix}button tooltip="{$_['edit']}" icon="o-pencil" wire:click="openEditModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
+            <x-{$prefix}button tooltip="{$_['delete']}" icon="o-trash" wire:click="openDeleteModal({$singleQuote}{{ \${$modelVariable}->{$modelKey} }}{$singleQuote})"/>
         </div>
         @endscope
     </x-{$prefix}table>
-    
+
      @if (\$isEditModalOpen)
          <x-{$prefix}modal wire:model="isEditModalOpen">
-            <x-{$prefix}card title="Edit {$modelName}">
+            <x-{$prefix}card title="{$_['updateModalTitle']}">
                 <p class="text-gray-600">
-                    Edit the details of the {$modelName}.
+                    {$_['updateModalDescription']}
                 </p>
-                <div class="mt-4">
+                <div class="mt-4 grid gap-3">
                     {$formFields}
                 </div>
                 <x-slot name="actions">
                     <div class="flex justify-end gap-x-4">
-                        <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
-                        <x-{$prefix}button label="Save" wire:click="saveModel" spinner class="btn-primary" icon="o-check-circle"/>
+                        <x-{$prefix}button label="{$_['cancel']}" wire:click="closeModal" icon="o-x-mark" />
+                        <x-{$prefix}button label="{$_['save']}" wire:click="saveModel" spinner class="btn-primary" icon="o-check-circle"/>
                     </div>
                 </x-slot>
             </x-{$prefix}card>
         </x-{$prefix}modal>
     @endif
 
-    
+
     @if (\$isCreateModalOpen)
         <x-{$prefix}modal wire:model="isCreateModalOpen">
-            <x-{$prefix}card title="Create New {$modelName}">
+            <x-{$prefix}card title="{$_['createModalTitle']}">
                 <p class="text-gray-600">
-                    Enter the details for the new {$modelName}.
+                    {$_['createModalDescription']}
                 </p>
-                <div class="mt-4">
+                <div class="mt-4 grid gap-3">
                     {$formFields}
                 </div>
                 <x-slot name="actions">
                     <div class="flex justify-end gap-x-4">
-                        <x-{$prefix}button label="Cancel" wire:click="closeModal" icon="o-x-mark" />
-                        <x-{$prefix}button label="Create" wire:click="saveModel" spinner class="btn-primary" icon="o-plus-circle"/>
+                        <x-{$prefix}button label="{$_['cancel']}" wire:click="closeModal" icon="o-x-mark" />
+                        <x-{$prefix}button label="{$_['create']}" wire:click="saveModel" spinner class="btn-primary" icon="o-plus-circle"/>
                     </div>
                 </x-slot>
             </x-{$prefix}card>
         </x-{$prefix}modal>
     @endif
-    
+
     @if (\$isDeleteModalOpen)
-         <x-{$prefix}modal wire:model="isDeleteModalOpen" title="Delete">
-            <div>Are you sure you want to delete this record ?</div>
-    
+         <x-{$prefix}modal wire:model="isDeleteModalOpen" title="{$_['deleteModalTitle']}">
+            <div>{$_['deleteModalDescription']}</div>
+
             <x-slot:actions>
-                <x-{$prefix}button label="No" @click="\$wire.isDeleteModalOpen = false"/>
-                <x-{$prefix}button label="Yes" wire:click="deleteModel" class="btn-primary"/>
+                <x-{$prefix}button label="{$_['no']}" @click="\$wire.isDeleteModalOpen = false"/>
+                <x-{$prefix}button label="{$_['yes']}" wire:click="deleteModel" class="btn-primary"/>
             </x-slot:actions>
         </x-{$prefix}modal>
     @endif
@@ -511,6 +583,23 @@ EOT;
 
     private function createLivewireFile(string $content, string $filePath): void
     {
-        file_put_contents($filePath, $content);
+        $this->createFile($filePath, $content);
+    }
+
+    private function createFile(string $filePath, string $content = ''): bool
+    {
+        $pathInfo = pathinfo($filePath);
+
+        $dirPath = $pathInfo['dirname'];
+
+        if (!is_dir($dirPath)) {
+            mkdir($dirPath, 0755, true);
+        }
+
+        if (file_put_contents($filePath, $content) !== false) {
+            return true;
+        }
+
+        return false;
     }
 }
