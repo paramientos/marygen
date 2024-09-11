@@ -102,8 +102,8 @@ php artisan marygen:make --model=User --view=admin-users --dest_lang=es --no-rou
 
 This command will generate a Livewire page for the User model with CRUD functionality, name the view file `admin-users.blade.php`, and translate the content from English to Spanish and skip the automatic route generation.
 
-## Automatic Route Generation (as of v0.35.2)
-Starting from version 0.35.1, MaryGen includes an automatic route generation feature. By default, when you generate a new component using the `marygen:make` command, a corresponding route is automatically added to your `routes/web.php` file.
+## Prevent Automatic Route Generation (as of v0.35.2)
+Starting from version 0.35.2, MaryGen prevents automatic route generation feature. By default, when you generate a new component without using --no-route option with the `marygen:make` command, a corresponding route is automatically added to your `routes/web.php` file.
 
 ## Customization
 
