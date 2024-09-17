@@ -81,7 +81,7 @@ class MaryGenCommand extends Command
 
         $this->createLivewireFile($livewirePage, $viewFilePath);
 
-        if ($this->option('no-route')) {
+        if (!$this->option('no-route')) {
             $route = $this->updateRoute($table, $viewName);
             $fullUrl = config('app.url') . '/' . $route;
         }
@@ -90,7 +90,7 @@ class MaryGenCommand extends Command
 
         $this->info("✅ Done! Livewire page for `{$modelName}` has been generated successfully at `{$viewFilePath}`!");
 
-        if ($this->option('no-route')) {
+        if (!$this->option('no-route')) {
             $this->info("✅ Route has been added to the routes/web.php file");
             $this->info("🌐 You can access your generated page via `{$fullUrl}`");
         }
@@ -275,7 +275,7 @@ class MaryGenCommand extends Command
             $label = Str::headline($column['name']);
 
             if ($this->option('dest_lang')) {
-                $label = $tr->translate($label);
+                $label = addslashes($tr->translate($label));
             }
 
             $tableColumns[] = "['key' => '{$column['name']}', 'label' => '{$label}', 'sortable' => true],\n";
