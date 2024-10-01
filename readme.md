@@ -54,7 +54,7 @@ MaryGen is a powerful Laravel package designed to streamline the process of gene
 
 4. Install the MaryGen package:
    ```bash
-   composer require soysaltan/marygen --dev
+   composer require soysaltan/marygen
    ```
 
 5. (Optional) Publish the configuration file:
