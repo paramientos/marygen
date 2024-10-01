@@ -198,8 +198,8 @@ class MaryGenCommand extends Command
         $componentMap = [
             'varchar' => 'input',
             'text' => 'textarea',
-            'integer' => 'number',
-            'bigint' => 'number',
+            'integer' => 'input',
+            'bigint' => 'input',
             'bool' => 'checkbox',
             'time' => 'datepicker',
             'timestamp' => 'datepicker',
@@ -456,14 +456,6 @@ new class extends Component
         return [
 {$tableColumns}
         ];
-    }
-
-    public function sort(\$column): void
-    {
-        \$this->sortBy['direction'] = (\$this->sortBy['column'] === \$column)
-            ? (\$this->sortBy['direction'] === 'asc' ? 'desc' : 'asc')
-            : 'asc';
-        \$this->sortBy['column'] = \$column;
     }
 
     public function {$pluralModelVariable}(): \Illuminate\Pagination\LengthAwarePaginator
