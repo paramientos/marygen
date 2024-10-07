@@ -105,6 +105,48 @@ This command will generate a Livewire page for the User model with CRUD function
 ## Prevent Automatic Route Generation (as of `v0.35.2`)
 Starting from version `0.35.2`, MaryGen prevents automatic route generation feature. By default, when you generate a new component without using --no-route option with the `marygen:make` command, a corresponding route is automatically added to your `routes/web.php` file.
 
+## New in Version 0.36.1: Multi-Database Connection Support
+
+As of version 0.36.1, MaryGen now supports models that use different database connections. This feature allows you to generate components and pages for models that are associated with databases other than your default connection.
+
+### How it works
+
+MaryGen now respects the `$connection` property of your Eloquent models. When generating components and pages, it will use the specified connection to:
+
+1. Retrieve the correct table schema
+2. Generate appropriate form fields
+3. Create table columns
+4. Set up sorting and filtering
+
+### Usage
+
+No additional configuration is required. Simply ensure that your model specifies the correct connection:
+
+```php
+class User extends Model
+{
+    protected $connection = 'secondary_db';
+
+    // ... rest of your model
+}
+```
+
+When you run the `marygen:make` command for this model, MaryGen will automatically use the 'secondary_db' connection for all database operations.
+
+### Example
+
+```bash
+php artisan marygen:make --model=User
+```
+
+If the User model specifies a different connection, MaryGen will use that connection to generate the component and page.
+
+### Notes
+
+- Ensure that all specified connections are properly configured in your `config/database.php` file.
+- If a model doesn't specify a connection, MaryGen will use the default database connection.
+- This feature is particularly useful for applications that interact with multiple databases or use database sharding.
+
 ## Customization
 
 You can customize the generated components by modifying the following methods in the `MaryGenCommand` class:
