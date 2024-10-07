@@ -64,12 +64,12 @@ class MaryGenCommand extends Command
         /** @var Model $modelInstance */
         $modelInstance = new $modelFqdn;
 
-        $table = $modelInstance->getTable();
-        $columns = Schema::getColumns($table);
+        $table = $modelInstance->setConnection($modelInstance->getConnectionName())->getTable();
+        $columns = Schema::connection($modelInstance->getConnectionName())->getColumns($table);
 
-        $modelKey = $modelInstance->getKeyName();
+        $modelKey = $modelInstance->setConnection($modelInstance->getConnectionName())->getKeyName();
 
-        $formFields = $this->generateFormFields($table, $columns, $modelKey);
+        $formFields = $this->generateFormFields($table, $columns, $modelKey, $modelInstance->getConnectionName());
 
         $tableColumns = $this->generateTableColumns($columns, $modelKey);
         $fieldTypes = $this->getTableFieldTypes($columns);
@@ -136,7 +136,7 @@ class MaryGenCommand extends Command
      * @throws RateLimitException
      * @throws TranslationRequestException
      */
-    private function generateFormFields(string $table, array $columns, string $modelKey): string
+    private function generateFormFields(string $table, array $columns, string $modelKey, string $connectionName = 'default'): string
     {
         $fields = '';
         $prefix = config('mary.prefix');
@@ -155,7 +155,8 @@ class MaryGenCommand extends Command
             $colName = $column['name'];
             $required = !$column['nullable'] ? 'required' : '';
 
-            $type = Schema::getColumnType($table, $colName);
+            $type = Schema::connection($connectionName)->getColumnType($table, $colName);
+
             $component = $this->getMaryUIComponent($type);
             $typeProp = $colName === 'password' ? 'type="password"' : '';
             $icon = $this->getIconForColumn($colName);
