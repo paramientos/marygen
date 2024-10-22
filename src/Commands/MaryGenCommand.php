@@ -136,8 +136,12 @@ class MaryGenCommand extends Command
      * @throws RateLimitException
      * @throws TranslationRequestException
      */
-    private function generateFormFields(string $table, array $columns, string $modelKey, string $connectionName = 'default'): string
+    private function generateFormFields(string $table, array $columns, string $modelKey, ?string $connectionName = null): string
     {
+        if (is_null($connectionName)) {
+            $connectionName = config('database.default');
+        }
+
         $fields = '';
         $prefix = config('mary.prefix');
 
